@@ -1,8 +1,13 @@
 #include "9cc.h"
 
 
-
-
+void error(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    fprintf(stderr, "\n");
+    exit(1);
+}
 // エラー箇所を報告をするための関数
 void error_at(char *loc, char *fmt, ...) {
 	va_list ap;
@@ -145,6 +150,24 @@ Token *tokenize(char *p) {
 			continue;
 		}
 
+        if (*p == ';') {
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
+            continue;
+        }
+
+        if (*p == '=') {
+            cur = new_token(TK_RESERVED, cur, p, 1);
+            p++;
+            continue;
+        }
+
+        if (isalpha(*p)) {
+            cur = new_token(TK_IDENT, cur, p, 1);
+            p++;
+            continue;
+        }
+
 		if (isdigit(*p)) {
 			char *start = p;
 			int val = strtol(p, &p, 10);
@@ -164,7 +187,7 @@ Token *tokenize(char *p) {
 // 抽象構文木のノードの種類
 
 
-Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
+Node *new_node(int kind, Node *lhs, Node *rhs) {
 	Node *node = calloc(1, sizeof(Node));
 	node -> kind = kind;
 	node -> lhs = lhs;
@@ -179,9 +202,29 @@ Node *new_node_num(int val) {
 	return node;
 }
 
+Node *new_node_lvar(int offset) {
+    Node *node = calloc(1, sizeof(Node));
+    node -> kind = ND_LVAR;
+    node -> offset = offset;
+    return node;
+}
+
+Node *stmt() {
+    Node *node = expr();
+    expect(";");
+    return node;
+}
+
 Node *expr() {
-	Node *node = equality();
+	Node *node = assign();
 	return node;
+}
+
+Node *assign() {
+    Node *node = equality();
+    if (consume("="))
+        node = new_node(ND_ASSIGN, node, assign());
+    return node;
 }
 
 Node *equality() {
@@ -216,9 +259,9 @@ Node *add() {
 	Node *node = mul();
 	for (;;) {
 		if (consume("+")) 
-			node = new_node(ND_ADD, node, mul());
+			node = new_node('+', node, mul());
 		else if (consume("-"))
-			node = new_node(ND_SUB, node, mul());
+			node = new_node('-', node, mul());
 		else
 			return node;
 	}
@@ -229,9 +272,9 @@ Node *mul() {
 
 	for (;;) {
 		if (consume("*")) 
-			node = new_node(ND_MUL, node, unary());
+			node = new_node('*', node, unary());
 		else if (consume("/"))
-			node = new_node(ND_DIV, node, unary());
+			node = new_node('/', node, unary());
 		else
 			return node;
 	}
@@ -241,7 +284,7 @@ Node *unary() {
 	if (consume("+"))
 		return primary();
 	if (consume("-")) 
-		return new_node(ND_SUB, new_node_num(0), primary());
+		return new_node('-', new_node_num(0), primary());
 	return primary();
 }
 
@@ -252,11 +295,14 @@ Node *primary() {
 		return node;
 	}
 
+    if (token -> kind == TK_IDENT) {
+        int offset = (token -> str[0] - 'a') * 8 + 8;
+
+        token = token -> next;
+
+        return new_node_lvar(offset);
+    }
+
 	return new_node_num(expect_number());
 }
-
-
-
- 
-
 
