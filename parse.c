@@ -160,6 +160,16 @@ Token *tokenize(char *p) {
 			continue;
 		}
 
+		if (*p == '{') {
+			cur = new_token(TK_RESERVED, cur, p++, 1);
+			continue;
+		}
+
+		if (*p == '}') {
+			cur = new_token(TK_RESERVED, cur, p++, 1);
+			continue;
+		}
+
         if (*p == ';') {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
@@ -256,7 +266,6 @@ Node *new_node_lvar(int offset) {
 }
 
 Node *stmt() {
-
 	if (token -> kind == TK_RETURN) {
 		token = token -> next; // TK_RETURNを消費
 
@@ -289,6 +298,70 @@ Node *stmt() {
 		Node *body = stmt();
 
 		return new_node(ND_WHILE, cond, body);
+	} else if (token -> kind == TK_RESERVED && token -> str[0] == '{') {
+		token = token -> next; //"{"を消費
+
+		Node head = {}; // リストのダミーの先頭
+		Node *cur = &head;
+
+		while (token -> kind != TK_RESERVED || token -> str[0] != '}') {
+			cur -> next = stmt(); // stmt()を再帰呼び出し
+			cur = cur -> next; // リストの次に進む
+		}
+		token = token -> next; // "}"を消費
+
+		// ND_BLOCKノードにくっつけて、head.next(リストの本当の先頭)を
+		// lhs(body)にくっつけて返す
+		return new_node(ND_BLOCK, head.next, NULL);
+	} else if (token -> kind == TK_FOR) {
+		token = token -> next; // TK_FORを消費
+		expect("(");
+
+		// --- for (A; B; C) の A, B, C をパース ---
+		// (A) 初期化式 無くてもいい
+		Node *init = NULL;
+		if (token -> kind != TK_RESERVED || token -> str[0] != ';') {
+			init = expr();
+		}
+		expect(";");
+
+		// (B) 条件式 無くてもいい(ない場合は真(1)扱い)
+		Node *cond = NULL;
+		if (token -> kind != TK_RESERVED || token -> str[0] != ';') {
+			cond = expr();
+		}
+		if (cond == NULL) {
+			cond = new_node_num(1);
+		}
+		expect(";");
+
+		// (C)インクリメント式 無くてもいい
+		Node *inc = NULL;
+		if (token -> kind != TK_RESERVED || token -> str[0] != ')') {
+			inc = expr();
+		}
+		expect(")");
+
+		Node *body = stmt();
+
+		// --- for を whileに組み換え ---
+		//{D; C;}のブロックを作る
+		Node *block_body = new_node(ND_BLOCK, body, NULL);
+		if (inc) {
+			body -> next = inc;
+		}
+
+		// while (B) {D; C; }のwhileの木を作る
+		Node *while_node = new_node(ND_WHILE, cond, block_body);
+
+		//{A; while(B) {...}}の外側のブロックをつくる
+		if (init == NULL) {
+			return while_node;
+		} else {
+			init -> next = while_node;
+			return new_node(ND_BLOCK, init, NULL);
+		}
+
 	}
     Node *node = expr();
     expect(";");

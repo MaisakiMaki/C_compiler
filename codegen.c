@@ -92,6 +92,19 @@ void gen(Node *node) {
         printf(".L.end.%d:\n", c);
         return;
     }
+    case ND_BLOCK: {
+        // node -> lhs(body)から始まる文のリストを
+        // 1個ずつnextでたどりながら、全部genする
+        for (Node *n = node -> lhs; n; n = n -> next) {
+            gen(n);
+            // 各文の計算結果をスタックから捨てる
+            // (お掃除)
+            printf("    pop rax\n");
+        }
+
+        printf("    push 0\n");
+        return;
+    }
     case '+':
     case '-':
     case '*':

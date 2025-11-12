@@ -56,5 +56,6 @@ assert 1 "foo = 5; bar = 5; if (foo == bar) return 1;"
 assert 0 "foo = 5; bar = 10; if (foo == bar) return 1; else return 0;" 
 assert 10 "foo = 10; bar = 20; if (foo < bar) bar = foo; return bar;"
 assert 10 "foo = 0; while (foo < 10)  foo = foo + 1; return foo;"
+assert 10 "foo = 0; for (bar = 0; bar < 10; bar = bar + 1) foo = foo + 1; return foo;"
 
 echo OK
