@@ -30,6 +30,18 @@ void gen(Node *node) {
         printf("    mov [rax], rdi\n");
         printf("    push rdi\n");
         return;
+    case ND_RETURN:
+        // 戻り値（左辺）の計算
+        gen(node -> lhs);
+
+        // スタックの一番上にある戻り値をraxに持ってくる
+        printf("    pop rax\n");
+
+        // mainに後片付けをさせずに、今すぐ脱出する
+        printf("    mov rsp, rbp\n");
+        printf("    pop rbp\n");
+        printf("    ret\n");
+        return;
     case '+':
     case '-':
     case '*':

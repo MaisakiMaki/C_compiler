@@ -180,7 +180,11 @@ Token *tokenize(char *p) {
 
 			int len = p - start;
 
-            cur = new_token(TK_IDENT, cur, start, len);
+			if (len == 6 && memcmp(start, "return", 6) == 0) {
+				cur = new_token(TK_RETURN, cur, start, 6);
+			} else {
+				cur = new_token(TK_IDENT, cur, start, len);
+			}
             continue;
         }
 
@@ -235,6 +239,15 @@ Node *new_node_lvar(int offset) {
 }
 
 Node *stmt() {
+
+	if (token -> kind == TK_RETURN) {
+		token = token -> next; // TK_RETURNを消費
+
+		Node *node = expr();
+		expect(";");
+
+		return new_node(ND_RETURN, node , NULL);
+	}
     Node *node = expr();
     expect(";");
     return node;

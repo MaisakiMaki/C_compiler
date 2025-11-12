@@ -49,6 +49,9 @@ assert 10 "foo = 10; bar = foo; bar;"
 # 4. 「名簿」検索の「衝突」テスト（一番意地悪なヤツ）
 # "foo" (len=3) と "foobar" (len=6) は「別人」として扱えるか？
 assert 13 "foo = 3; foobar = 10; foo + foobar;"
+assert 5 "return 5;"
+assert 25 "foo = 5; bar = 20; ans = foo + bar; return ans;"
+assert 10 "foo = 5; bar = 10; return bar; foo = foo + bar; foo;"
 
 
 echo OK

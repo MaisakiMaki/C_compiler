@@ -25,8 +25,9 @@ int main(int argc, char **argv) {
     while (!at_eof()) {
         Node *node = stmt();
         gen(node);
-	    printf("	pop rax\n");
-        
+		if (node -> kind != ND_RETURN) {
+			printf("	pop rax\n");
+		}
     }
 
 	// 式の最初は数でなければならないので、それをチェックして
