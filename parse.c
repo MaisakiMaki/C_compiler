@@ -1,5 +1,15 @@
 #include "9cc.h"
 
+typedef struct LVar LVar;
+
+struct LVar{
+	LVar *next;
+	char *name;
+	int len;
+	int offset;
+};
+
+LVar *locals;
 
 void error(char *fmt, ...) {
     va_list ap;
@@ -163,8 +173,14 @@ Token *tokenize(char *p) {
         }
 
         if (isalpha(*p)) {
-            cur = new_token(TK_IDENT, cur, p, 1);
-            p++;
+			char *start = p;
+			while (isalnum(*p) || *p == '_') {
+				p++;
+			}
+
+			int len = p - start;
+
+            cur = new_token(TK_IDENT, cur, start, len);
             continue;
         }
 
@@ -200,6 +216,15 @@ Node *new_node_num(int val) {
 	node -> kind = ND_NUM;
 	node -> val = val;
 	return node;
+}
+
+LVar *find_lvar(Token *tok) {
+	for (LVar *var = locals; var; var =  var -> next) {
+		if (var -> len == tok -> len && memcmp(tok -> str, var -> name, tok -> len) == 0) {
+			return var;
+		}
+	}
+	return NULL;
 }
 
 Node *new_node_lvar(int offset) {
@@ -296,11 +321,32 @@ Node *primary() {
 	}
 
     if (token -> kind == TK_IDENT) {
-        int offset = (token -> str[0] - 'a') * 8 + 8;
+		Token *tok = token; // トークンを覚えておく
+		token = token -> next; // トークンを1個消費
 
-        token = token -> next;
+		// 名簿を検索
+		LVar *lvar = find_lvar(tok);
 
-        return new_node_lvar(offset);
+		if (lvar) {
+			// いた場合
+			// 名簿に書いてある古い住所でノードの制作
+			return new_node_lvar(lvar -> offset);
+		} else {
+			// いなかった場合
+			// 新しい名簿の箱を作る
+			lvar = calloc(1, sizeof(LVar));
+			lvar -> next = locals;
+			lvar -> name = tok -> str;
+			lvar -> len = tok -> len;
+
+			// 新しい住所を作る
+			// 名簿が空なら0
+			// 先輩がいたらその人の住所+8
+			lvar -> offset = (locals ? locals -> offset : 0) + 8;
+
+			locals = lvar; // 名簿の先頭を新人に更新
+			return new_node_lvar(lvar -> offset);
+		}
     }
 
 	return new_node_num(expect_number());

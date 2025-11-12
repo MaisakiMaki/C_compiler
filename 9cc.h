@@ -23,6 +23,7 @@ struct Token {
 	int len; // トークンの長さ
 };
 
+
 // 現在着目しているトークン
 extern Token *token;
 
