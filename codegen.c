@@ -68,6 +68,30 @@ void gen(Node *node) {
         printf(".L.end.%d:\n", c);
         return;
     }
+    case ND_WHILE: {
+        int c = label_count++;
+
+        // ループ開始ラベル
+        printf(".L.begin.%d:\n", c);
+
+        // 条件判定(lhs)の計算
+        gen(node -> lhs);
+        printf("    pop rax\n");
+        printf("    cmp rax, 0\n");
+
+        //偽だったらendにジャンプ
+        printf("    je .L.end.%d\n", c);
+
+        // 真だったらbodyブロック(rhs)を実行
+        gen(node -> rhs);
+        printf("    pop rax\n");
+
+        // 無条件にループの開始に戻る
+        printf("    jmp .L.begin.%d\n", c);
+
+        printf(".L.end.%d:\n", c);
+        return;
+    }
     case '+':
     case '-':
     case '*':

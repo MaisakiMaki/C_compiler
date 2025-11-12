@@ -279,6 +279,16 @@ Node *stmt() {
 			els = stmt();
 		}
 		return new_node_if(cond, then, els);
+	} else if (token -> kind == TK_WHILE) {
+		token = token -> next;
+
+		expect("(");
+		Node *cond = expr();
+		expect(")");
+
+		Node *body = stmt();
+
+		return new_node(ND_WHILE, cond, body);
 	}
     Node *node = expr();
     expect(";");
