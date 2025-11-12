@@ -52,7 +52,8 @@ assert 13 "foo = 3; foobar = 10; foo + foobar;"
 assert 5 "return 5;"
 assert 25 "foo = 5; bar = 20; ans = foo + bar; return ans;"
 assert 10 "foo = 5; bar = 10; return bar; foo = foo + bar; foo;"
-
+assert 1 "foo = 5; bar = 5; if (foo == bar) return 1;"
+assert 0 "foo = 5; bar = 10; if (foo == bar) return 1; else return 0;" 
+assert 10 "foo = 10; bar = 20; if (foo < bar) bar = foo; return bar;"
 
 echo OK
-

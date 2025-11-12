@@ -10,6 +10,10 @@ typedef enum {
 	TK_RESERVED, // 記号
 	TK_NUM, // 整数トークン
 	TK_RETURN, // returnトークン
+	TK_IF, // ifトークン
+	TK_ELSE, // elseトークン
+	TK_WHILE, // whileトークン
+	TK_FOR, // forトークン
     TK_IDENT, //変数トークン
 	TK_EOF, // 入力の終わりを表すトークン
 } TokenKind;
@@ -38,6 +42,10 @@ typedef enum {
 	ND_LE, // <=
     ND_ASSIGN,
 	ND_RETURN, // return
+	ND_IF, // if
+	ND_ELSE, // else
+	ND_WHILE, // while
+	ND_FOR, // for
     ND_LVAR, // ローカル変数
 	ND_NUM, // 整数
 } NodeKind;
@@ -48,6 +56,7 @@ struct Node {
 	int kind; // ノードの型
 	Node *lhs; // 左辺
 	Node *rhs; // 右辺
+	Node *els;
     int offset; // ND_LVARの場合のみ使う
 	int val; //kindがND_NUMの場合のみ使う
 };
@@ -73,6 +82,7 @@ bool at_eof(void);
 Node *new_node(int kind, Node *lhs, Node *rhs);
 Node *new_node_num(int val);
 Node *new_node_lvar(int offset);
+Node *new_node_if(Node *cond, Node *then, Node *els);
 
 void gen(Node *node);
 void gen_lval(Node * node);

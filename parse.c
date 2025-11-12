@@ -182,6 +182,14 @@ Token *tokenize(char *p) {
 
 			if (len == 6 && memcmp(start, "return", 6) == 0) {
 				cur = new_token(TK_RETURN, cur, start, 6);
+			} else if (len == 2 && memcmp(start, "if", 2) == 0) {
+				cur = new_token(TK_IF, cur, start, 2);
+			} else if (len == 4 && memcmp(start, "else", 4) == 0) {
+				cur =  new_token(TK_ELSE, cur, start, 4);
+			} else if (len == 5 && memcmp(start, "while", 5) == 0) {
+				cur = new_token(TK_WHILE, cur, start, 5);
+			} else if (len == 3 && memcmp(start, "for", 3) == 0) {
+				cur = new_token(TK_FOR, cur, start, 3);
 			} else {
 				cur = new_token(TK_IDENT, cur, start, len);
 			}
@@ -222,6 +230,15 @@ Node *new_node_num(int val) {
 	return node;
 }
 
+Node *new_node_if(Node *cond, Node  *then, Node *els) {
+	Node *node = calloc(1, sizeof(Node));
+	node -> kind = ND_IF;
+	node -> lhs = cond;
+	node -> rhs = then;
+	node -> els = els;
+	return node;
+}
+
 LVar *find_lvar(Token *tok) {
 	for (LVar *var = locals; var; var =  var -> next) {
 		if (var -> len == tok -> len && memcmp(tok -> str, var -> name, tok -> len) == 0) {
@@ -246,7 +263,22 @@ Node *stmt() {
 		Node *node = expr();
 		expect(";");
 
-		return new_node(ND_RETURN, node , NULL);
+		return new_node(ND_RETURN, node, NULL);
+	} else if (token -> kind == TK_IF) {
+		token = token -> next;
+
+		expect("(");
+		Node *cond = expr();
+		expect(")");
+
+		Node *then = stmt();
+
+		Node *els = NULL;
+		if (token -> kind == TK_ELSE) {
+			token = token -> next;
+			els = stmt();
+		}
+		return new_node_if(cond, then, els);
 	}
     Node *node = expr();
     expect(";");
