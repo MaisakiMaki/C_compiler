@@ -1,14 +1,5 @@
 #include "9cc.h"
 
-typedef struct LVar LVar;
-
-struct LVar{
-	LVar *next;
-	char *name;
-	int len;
-	int offset;
-};
-
 LVar *locals;
 
 void error(char *fmt, ...) {
@@ -266,6 +257,14 @@ Node *new_node_lvar(int offset) {
     return node;
 }
 
+Node *new_node_call(Token *tok) {
+	Node *node = calloc(1, sizeof(Node));
+	node -> kind = ND_CALL;
+	node -> name = tok -> str;
+	node -> name_len = tok -> len;
+	return node;
+}
+
 Node *stmt() {
 	if (token -> kind == TK_RETURN) {
 		token = token -> next; // TK_RETURNを消費
@@ -452,6 +451,28 @@ Node *primary() {
     if (token -> kind == TK_IDENT) {
 		Token *tok = token; // トークンを覚えておく
 		token = token -> next; // トークンを1個消費
+
+		if (consume("(")) {
+			Node *node = new_node_call(tok);
+			//空っぽの引数リスト
+			if (consume(")")) {
+				return node;
+			}
+
+			// 引数リストあり
+			Node head = {};
+			Node *cur = &head;
+
+			cur -> next = expr();
+			cur = cur -> next;
+			while(consume(",")) {
+				cur -> next = expr();
+				cur = cur -> next;
+			}
+			expect(")");
+			node -> args = head.next;
+			return node;
+		}
 
 		// 名簿を検索
 		LVar *lvar = find_lvar(tok);

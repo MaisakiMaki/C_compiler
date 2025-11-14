@@ -105,6 +105,31 @@ void gen(Node *node) {
         printf("    push 0\n");
         return;
     }
+    case ND_CALL: {
+
+        // 引数を渡すレジスタのリスト
+        char *arg_reg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+        // 引数をスタックに積む
+        int arg_count = 0;
+        for (Node *arg = node -> args; arg; arg = arg -> next) {
+            gen(arg);
+            arg_count++;
+        }
+
+        for (int i = arg_count - 1; i >= 0; i--) {
+            printf("    pop %s\n", arg_reg[i]);
+        }
+        //関数名を%.*sで出力する。
+        //node -> name_lenと node -> nameをprintfにわたす
+        printf("    call %.*s\n", node -> name_len, node -> name);
+
+        //C言語のルールで返り値はraxに入る
+        //このコンパイラは式の値をスタックに積むというルールなので
+        // raxの値をスタックにpushしておく
+        printf("    push rax\n");
+        return;
+    }
     case '+':
     case '-':
     case '*':

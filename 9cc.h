@@ -35,6 +35,8 @@ extern Token *token;
 // 入力データ
 extern char *user_input;
 
+
+
 typedef enum {
 	ND_EQ, // ==
 	ND_NE, // !=
@@ -64,7 +66,17 @@ struct Node {
 	int val; //kindがND_NUMの場合のみ使う
 	char *name;
 	int name_len;
+	Node *args;
 };
+
+typedef struct LVar LVar;
+struct LVar{
+	LVar *next;
+	char *name;
+	int len;
+	int offset;
+};
+extern LVar *locals;
 
 // 関数ライブラリ
 Node *expr();
