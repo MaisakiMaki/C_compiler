@@ -49,6 +49,7 @@ typedef enum {
 	ND_BLOCK, //block
     ND_LVAR, // ローカル変数
 	ND_NUM, // 整数
+	ND_CALL,// 関数呼び出し
 } NodeKind;
 
 typedef struct Node Node;
@@ -61,6 +62,8 @@ struct Node {
 	Node *next;
     int offset; // ND_LVARの場合のみ使う
 	int val; //kindがND_NUMの場合のみ使う
+	char *name;
+	int name_len;
 };
 
 // 関数ライブラリ

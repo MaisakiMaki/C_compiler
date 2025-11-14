@@ -66,6 +66,7 @@ int expect_number() {
 bool at_eof() {
 	return token -> kind  == TK_EOF;
 }
+
 // 新しいトークンを作成してcurに繋げる
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
 	Token *tok = calloc(1, sizeof(Token));
