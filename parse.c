@@ -54,6 +54,14 @@ int expect_number() {
 	return val;
 }
 
+Token *expect_ident() {
+	if (token -> kind != TK_IDENT) 
+		error_at(token -> str, "識別子ではありません");
+	Token *tok = token;
+	token = token -> next;
+	return tok;
+}
+
 bool at_eof() {
 	return token -> kind  == TK_EOF;
 }
@@ -168,6 +176,12 @@ Token *tokenize(char *p) {
             continue;
         }
 
+		if (*p == ',') {
+			cur = new_token(TK_RESERVED, cur, p, 1);
+			p++;
+			continue;
+		}
+
         if (*p == '=') {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
@@ -263,6 +277,53 @@ Node *new_node_call(Token *tok) {
 	node -> name = tok -> str;
 	node -> name_len = tok -> len;
 	return node;
+}
+
+Function *function() {
+	// 新しい関数に入ったので、ローカル変数をリセットする
+	locals = NULL;
+
+	Token *tok = expect_ident(); //関数名を期待
+
+	// 関数ノードを作成
+	Function *func = calloc(1, sizeof(Function));
+	func -> name = tok -> str;
+	func -> name_len = tok -> len;
+
+	expect("(");
+	expect(")");
+	expect("{");
+
+	Node head = {};
+	Node *cur = &head;
+	while(!consume("}")) {
+		cur -> next = stmt();
+		cur = cur -> next;
+	}
+	
+	func -> node = head.next; // 文のリストを関数ノードにつなぐ
+	func -> locals = locals;
+	
+	int offset = 0;
+    if (locals) {
+        offset = locals->offset; //
+    }
+    func->stack_size = offset; // Function構造体に保存
+
+	return func;
+}
+
+//program = function*
+
+Function *program(void) {
+	Function head = {};
+	Function *cur = &head;
+
+	while (!at_eof()) {
+		cur -> next = function();
+		cur = cur -> next;
+	}
+	return head.next;
 }
 
 Node *stmt() {

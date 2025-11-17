@@ -78,6 +78,19 @@ struct LVar{
 };
 extern LVar *locals;
 
+typedef struct Function Function;
+
+struct Function {
+	Function *next; //次の関数
+	char *name; // 関数名
+	int name_len; // 関数名の長さ
+	Node *node; // 関数本体の先頭
+	LVar *locals; // この関数のローカル変数リスト
+	int stack_size; // この関数が必要とするスタックサイズ
+};
+
+
+
 // 関数ライブラリ
 Node *expr();
 Node *equality();
@@ -103,3 +116,5 @@ Node *new_node_if(Node *cond, Node *then, Node *els);
 
 void gen(Node *node);
 void gen_lval(Node * node);
+
+Function *program(void);

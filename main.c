@@ -13,41 +13,35 @@ int main(int argc, char **argv) {
 	user_input = argv[1];
 	token = tokenize(argv[1]);
 
-	// アセンブリの前半部分を出力
-	Node *code[100];
-	int i = 0;
+	//　全関数のパース
+	Function *func_list = program();
 
-	while (!at_eof()) {
-		code[i++] = stmt();
-	}
+	// アセンブリの前半部分を出力
 
 	printf(".intel_syntax noprefix\n");
 	printf(".globl main\n");
-	printf("main:\n");
+	for (Function *func = func_list; func; func = func -> next) {
+		printf("%.*s:\n", func -> name_len, func -> name);
 
-	//プロローグ
-	printf("	push rbp\n");
-	printf("	mov rbp, rsp\n");
+		//プロローグ
+		printf("	push rbp\n");
+		printf("	mov rbp, rsp\n");
 
-	//必要なオフセットを計算してスタック確保
-	//locals はリストの先頭（一番最後に登録された変数）を指す。
-	//そのoffsetが必要なサイズになる
-	int offset = locals ? locals -> offset : 0;
-	printf("	sub rsp, %d\n", offset);
+		//必要なスタックサイズをfuncから持ってくる
+		printf("	sub rsp, %d\n", func -> stack_size);
 
-	//貯めておいた木を順番にgen
-	for (int j = 0; j < i; j++) {
-		gen(code[j]);
+		//genが正しいローカル変数リストをつかえるように
+		//グローバル変数”local"を、今からgenする関数のものに入れ替える
+		locals = func -> locals;
 
-		//式の評価結果をスタックから捨てる
-		//(ND_RETURNの場合はgenがretするので不要)
-		if (code[j] -> kind != ND_RETURN) {
-			printf("	pop rax\n");
+		for (Node *node = func -> node; node; node = node -> next) {
+			gen(node);
+			if (node -> kind != ND_RETURN) {
+				printf("	pop rax\n");
+			}
 		}
+		printf("	mov rsp, rbp\n");
+		printf("	pop rbp\n");
+		printf("	ret\n");
 	}
-
-	printf("	mov rsp, rbp\n");
-	printf("	pop rbp\n");
-	printf("	ret\n");
-	return 0;
 }
