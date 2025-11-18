@@ -347,6 +347,8 @@ Token *tokenize(char *p) {
 				cur = new_token(TK_WHILE, cur, start, 5);
 			} else if (len == 3 && memcmp(start, "for", 3) == 0) {
 				cur = new_token(TK_FOR, cur, start, 3);
+			} else if (len == 6 && (memcmp(start, "sizeof", 6) == 0)) {
+				cur = new_token(TK_RESERVED, cur, start, 6);
 			} else if (len == 3 && memcmp(start, "int", 3) == 0) {
 				cur = new_token(TK_RESERVED, cur, start, 3);
 			} else {
@@ -732,6 +734,11 @@ Node *unary() {
 		return new_node(ND_ADDR, unary(), NULL);
 	if (consume("*"))
 		return new_node(ND_DEREF, unary(), NULL);
+	if (consume("sizeof")) {
+		Node *node = unary();
+		add_type(node);
+		return new_node_num(type_size(node -> ty));
+	}
 
 	return primary();
 }

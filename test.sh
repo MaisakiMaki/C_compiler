@@ -89,5 +89,11 @@ assert 45 "int main() { int a[10]; int i; int sum; sum=0; for (i=0; i<10; i=i+1)
 # (注意: 戻り値は int なのでアドレスそのものは返せないが、差分で検証)
 # ポインタ同士の引き算は「要素数」を返すから、&a[9] - &a[0] は 9 になるはず。
 assert 9 "int main() { int a[10]; return &a[9] - &a[0]; }"
+assert 8 "int main() { int x; return sizeof(x); }"
+assert 8 "int main() { int x; return sizeof(x + 3); }"
+assert 8 "int main() { int *y; return sizeof(y); }"
+assert 8 "int main() { int x; return sizeof(x); }"
+assert 8 "int main() { return sizeof(1); }"
+assert 32 "int main() { int a[4]; return sizeof(a); }" # 8バイト * 4要素 = 32
 
 echo OK
