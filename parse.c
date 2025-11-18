@@ -1,5 +1,99 @@
 #include "9cc.h"
 
+Type *new_type_int() {
+	Type *ty = calloc(1, sizeof(Type));
+	ty -> kind = TY_INT;
+	return ty;
+}
+
+Type *new_type_ptr(Type *base) {
+	Type *ty = calloc(1, sizeof(Type));
+	ty -> kind = TY_PTR;
+	return ty;
+}
+
+void add_type(Node *node) {
+	if (!node || node -> ty) return;
+
+	add_type(node -> lhs);
+	add_type(node -> rhs);
+	add_type(node -> els);
+	add_type(node -> next);
+	add_type(node -> args);
+
+	switch (node -> kind) {
+		case ND_ADD:
+		case ND_SUB:
+		case ND_MUL:
+		case ND_DIV:
+		case ND_ASSIGN:
+			node -> ty = node -> lhs -> ty;
+			return;
+		
+		case ND_EQ:
+		case ND_NE:
+		case ND_LT:
+		case ND_LE:
+		case ND_NUM:
+		case ND_CALL:
+			node -> ty = new_type_int();
+			return;
+		
+		case ND_LVAR:
+			return;
+			
+		case ND_ADDR:
+			node -> ty = new_type_ptr(node -> lhs -> ty);
+			return;
+
+		case ND_DEREF:
+			if (node -> lhs -> ty -> ptr_to)
+				node -> ty = node -> lhs -> ty -> ptr_to;
+			else
+				node -> ty = new_type_int();
+			return;
+	}
+}
+
+Node *new_node_add(Node *lhs, Node *rhs) {
+	add_type(lhs);
+	add_type(rhs);
+
+	if (lhs -> ty -> kind == TY_INT && rhs -> ty -> kind == TY_PTR) {
+		Node *tmp = lhs;
+		lhs = rhs;
+		rhs = tmp;
+	}
+
+	if (lhs -> ty -> kind == TY_PTR && rhs -> ty -> kind == TY_INT) {
+		rhs = new_node(ND_MUL, rhs, new_node_num(8));
+
+		add_type(rhs);
+	}
+
+	Node *node = new_node(ND_ADD, lhs, rhs);
+	node -> ty = lhs -> ty;
+	return node;
+}
+
+Node *new_node_sub(Node *lhs, Node *rhs) {
+	add_type(lhs);
+	add_type(rhs);
+
+	if (lhs -> ty -> kind == TY_PTR && rhs -> ty -> kind == TY_INT) {
+		rhs = new_node(ND_MUL, rhs, new_node_num(8));
+		add_type(rhs);
+
+		Node *node = new_node(ND_SUB, lhs, rhs);
+		node -> ty = lhs -> ty;
+		return node;
+	}
+
+	Node *node = new_node(ND_SUB, lhs, rhs);
+	node -> ty = lhs -> ty;
+	return node;
+}
+
 LVar *locals;
 
 void error(char *fmt, ...) {
@@ -236,18 +330,6 @@ Token *tokenize(char *p) {
 	return head.next;
 }
 
-Type *new_type_int() {
-	Type *ty = calloc(1, sizeof(Type));
-	ty -> kind = TY_INT;
-	return ty;
-}
-
-Type *new_type_ptr(Type *base) {
-	Type *ty = calloc(1, sizeof(Type));
-	ty -> kind = TY_PTR;
-	return ty;
-}
-
 Type *parse_base_type() {
 	if (consume("int"))
 		return new_type_int();
@@ -267,6 +349,7 @@ Node *new_node_num(int val) {
 	Node *node = calloc(1, sizeof(Node));
 	node -> kind = ND_NUM;
 	node -> val = val;
+	node -> ty = new_type_int();
 	return node;
 }
 
@@ -572,9 +655,9 @@ Node *add() {
 	Node *node = mul();
 	for (;;) {
 		if (consume("+")) 
-			node = new_node('+', node, mul());
+			node = new_node_add(node, mul());
 		else if (consume("-"))
-			node = new_node('-', node, mul());
+			node = new_node_sub(node, mul());
 		else
 			return node;
 	}
@@ -585,9 +668,9 @@ Node *mul() {
 
 	for (;;) {
 		if (consume("*")) 
-			node = new_node('*', node, unary());
+			node = new_node(ND_MUL, node, unary());
 		else if (consume("/"))
-			node = new_node('/', node, unary());
+			node = new_node(ND_DIV, node, unary());
 		else
 			return node;
 	}
@@ -597,7 +680,7 @@ Node *unary() {
 	if (consume("+"))
 		return primary();
 	if (consume("-")) 
-		return new_node('-', new_node_num(0), primary());
+		return new_node(ND_SUB, new_node_num(0), primary());
 	if (consume("&"))
 		return new_node(ND_ADDR, unary(), NULL);
 	if (consume("*"))
@@ -645,7 +728,9 @@ Node *primary() {
 		if (lvar) {
 			// いた場合
 			// 名簿に書いてある古い住所でノードの制作
-			return new_node_lvar(lvar -> offset);
+			Node *node = new_node_lvar(lvar -> offset);
+			node -> ty = lvar -> ty;
+			return node;
 		} else {
 			// いなかった場合
 			// 新しい名簿の箱を作る
@@ -660,7 +745,9 @@ Node *primary() {
 			lvar -> offset = (locals ? locals -> offset : 0) + 8;
 
 			locals = lvar; // 名簿の先頭を新人に更新
-			return new_node_lvar(lvar -> offset);
+			Node *node = new_node_lvar(lvar -> offset);
+			node -> ty = lvar -> ty;
+			return node;
 		}
     }
 

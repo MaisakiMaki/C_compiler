@@ -44,4 +44,26 @@ assert 10 "int foo(int a) { return a; } int main() { return foo(10); }"
 assert 7 "int add(int a, int b) { return a+b; } int main() { return add(3, 4); }"
 assert 55 "int fib(int n) { if (n<=1) return n; return fib(n-1) + fib(n-2); } int main() { return fib(10); }"
 
+# ステップ19: ポインタ演算
+# ポインタに 1 を足すと、8バイト（intのサイズ分）進むか？
+# x(rbp-8), y(rbp-16) なので、&y + 1 は &x になるはず
+assert 3 "int main() { int x; int y; x=3; y=5; return *(&y + 1); }"
+
+# ポインタから 1 を引くと、8バイト戻るか？
+# &x - 1 は &y になるはず
+assert 5 "int main() { int x; int y; x=3; y=5; return *(&x - 1); }"
+
+# 変数を使ったポインタ演算
+# int *p; p = &y; p = p + 1; *p は x になるはず
+assert 3 "int main() { int x; int y; x=3; y=5; int *p; p=&y; p = p + 1; return *p; }"
+
+# 整数 + ポインタ (逆順) も動くか？
+# 1 + &y も &x になるはず
+assert 3 "int main() { int x; int y; x=3; y=5; return *(1 + &y); }"
+
+# 配列っぽい使い方のテスト
+# malloc はまだ無いけど、スタック上の変数を並べて擬似的に配列として扱う
+assert 3 "int main() { int x; int y; x=3; y=5; return *(&y + 1); }"
+assert 5 "int main() { int x; int y; x=3; y=5; return *(&x - 1); }"
+
 echo OK

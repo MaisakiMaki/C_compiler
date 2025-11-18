@@ -156,10 +156,10 @@ void gen(Node *node) {
         // 値をスタックに積む
         printf("    push rax\n");
         return;
-    case '+':
-    case '-':
-    case '*':
-    case '/':
+    case ND_ADD:
+    case ND_SUB:
+    case ND_MUL:
+    case ND_DIV:
     case ND_EQ:
     case ND_NE:
     case ND_LT:
@@ -176,16 +176,16 @@ void gen(Node *node) {
 	printf("	pop rax\n");
 
 	switch (node -> kind) {
-    case '+':
+    case ND_ADD:
 		printf("	add rax, rdi\n");
 		break;
-	case '-':
+	case ND_SUB:
 		printf("	sub rax, rdi\n");
 		break;
-	case '*':
+	case ND_MUL:
 		printf("	imul rax, rdi\n");
 		break;
-	case '/':
+	case ND_DIV:
 		printf("		cqo\n");
 		printf("	idiv rdi\n");
 		break;
