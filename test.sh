@@ -16,6 +16,7 @@ assert() {
 	fi
 }
 
+assert 3 "int main() { return 9 - 6; }"
 assert 0 "int main() { return 0; }"
 assert 42 "int main() { return 42; }"
 assert 21 "int main() { return 5+20-4; }"
@@ -65,5 +66,28 @@ assert 3 "int main() { int x; int y; x=3; y=5; return *(1 + &y); }"
 # malloc はまだ無いけど、スタック上の変数を並べて擬似的に配列として扱う
 assert 3 "int main() { int x; int y; x=3; y=5; return *(&y + 1); }"
 assert 5 "int main() { int x; int y; x=3; y=5; return *(&x - 1); }"
+
+assert 3 "int main() { int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }"
+assert 3 "int main() { int a[2]; a[0] = 1; a[1] = 2; return a[0] + a[1]; }"
+
+# 2. ポインタ演算との組み合わせ
+# a[2] は *(a + 2) と同じか？
+assert 5 "int main() { int a[2]; a[1] = 5; return *(a + 1); }"
+assert 5 "int main() { int a[2]; *(a + 1) = 5; return a[1]; }"
+# "3[a]" みたいな変態的な書き方もC言語では合法（*(3+a)と同じだから）。君のコンパイラでも動くはずだ。
+assert 5 "int main() { int a[2]; *a = 1; *(a + 1) = 5; return 1[a]; }" 
+
+# 3. ループでの書き込み
+# 0から9まで書き込んで、正しく読めるか？（オフセット計算がズレてないかチェック）
+assert 9 "int main() { int a[10]; int i; for (i=0; i<10; i=i+1) a[i]=i; return a[9]; }"
+assert 0 "int main() { int a[10]; int i; for (i=0; i<10; i=i+1) a[i]=i; return a[0]; }"
+assert 45 "int main() { int a[10]; int i; int sum; sum=0; for (i=0; i<10; i=i+1) a[i]=i; for (i=0; i<10; i=i+1) sum=sum+a[i]; return sum; }"
+
+# 4. 配列のサイズ計算
+# int a[10] は 8バイト * 10 = 80バイト確保されているか？
+# a[0] と a[9] のアドレスの差は 72 (9 * 8) になるはず。
+# (注意: 戻り値は int なのでアドレスそのものは返せないが、差分で検証)
+# ポインタ同士の引き算は「要素数」を返すから、&a[9] - &a[0] は 9 になるはず。
+assert 9 "int main() { int a[10]; return &a[9] - &a[0]; }"
 
 echo OK

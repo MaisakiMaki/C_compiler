@@ -12,6 +12,27 @@ Type *new_type_ptr(Type *base) {
 	return ty;
 }
 
+Type *new_type_array(Type *base, size_t size) {
+	Type *ty = calloc(1, sizeof(Type));
+	ty -> kind = TY_ARRAY;
+	ty -> ptr_to = base;
+	ty -> array_size = size;
+	return ty;
+}
+
+int type_size(Type *ty) {
+	if (!ty) return 8;
+
+	if (ty -> kind == TY_INT) return 8;
+	if (ty -> kind == TY_PTR) return 8;
+
+	if (ty -> kind == TY_ARRAY) {
+		return ty -> array_size * type_size(ty -> ptr_to);
+	}
+
+	return 8;
+}
+
 void add_type(Node *node) {
 	if (!node || node -> ty) return;
 
@@ -59,13 +80,13 @@ Node *new_node_add(Node *lhs, Node *rhs) {
 	add_type(lhs);
 	add_type(rhs);
 
-	if (lhs -> ty -> kind == TY_INT && rhs -> ty -> kind == TY_PTR) {
+	if (lhs -> ty -> kind == TY_INT && (rhs -> ty -> kind == TY_PTR || rhs -> ty -> kind == TY_ARRAY)) {
 		Node *tmp = lhs;
 		lhs = rhs;
 		rhs = tmp;
 	}
 
-	if (lhs -> ty -> kind == TY_PTR && rhs -> ty -> kind == TY_INT) {
+	if ((lhs -> ty -> kind == TY_PTR || lhs -> ty -> kind == TY_ARRAY) && rhs -> ty -> kind == TY_INT) {
 		rhs = new_node(ND_MUL, rhs, new_node_num(8));
 
 		add_type(rhs);
@@ -80,7 +101,7 @@ Node *new_node_sub(Node *lhs, Node *rhs) {
 	add_type(lhs);
 	add_type(rhs);
 
-	if (lhs -> ty -> kind == TY_PTR && rhs -> ty -> kind == TY_INT) {
+	if ((lhs -> ty -> kind == TY_PTR || lhs -> ty -> kind == TY_ARRAY) && rhs -> ty -> kind == TY_INT) {
 		rhs = new_node(ND_MUL, rhs, new_node_num(8));
 		add_type(rhs);
 
@@ -88,6 +109,16 @@ Node *new_node_sub(Node *lhs, Node *rhs) {
 		node -> ty = lhs -> ty;
 		return node;
 	}
+
+	if ((lhs -> ty -> kind == TY_PTR || lhs -> ty -> kind == TY_ARRAY) &&
+		(rhs -> ty -> kind == TY_PTR || rhs -> ty -> kind == TY_ARRAY)) {
+			Node *node = new_node(ND_SUB, lhs, rhs);
+			node -> ty = new_type_int();
+
+			node = new_node(ND_DIV, node, new_node_num(8));
+			node -> ty = new_type_int();
+			return node;
+		}
 
 	Node *node = new_node(ND_SUB, lhs, rhs);
 	node -> ty = lhs -> ty;
@@ -270,6 +301,16 @@ Token *tokenize(char *p) {
 			continue;
 		}
 
+		if (*p == '[') {
+			cur = new_token(TK_RESERVED, cur, p++, 1);
+			continue;
+		}
+
+		if (*p == ']') {
+			cur = new_token(TK_RESERVED, cur, p++, 1);
+			continue;
+		}
+
         if (*p == ';') {
             cur = new_token(TK_RESERVED, cur, p, 1);
             p++;
@@ -419,7 +460,8 @@ Function *function() {
 		lvar -> next = locals;
 		lvar -> name = tok -> str;
 		lvar -> len = tok -> len;
-		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		int size = type_size(ty);
+		lvar -> offset = (locals ? locals -> offset : 0) + size;
 		lvar -> ty = ty;
 		locals = lvar;
 
@@ -484,18 +526,23 @@ Function *program(void) {
 Node *stmt() {
 	Type *ty = parse_base_type();
 	if (ty) {
-
 		while(consume("*")) {
 			ty = new_type_ptr(ty);
 		}
-
 		Token *tok = expect_ident();
+
+		if (consume("[")) {
+			int size = expect_number();
+			expect("]");
+			ty = new_type_array(ty, size);
+		}
 
 		LVar *lvar = calloc(1, sizeof(LVar));
 		lvar -> next = locals;
 		lvar -> name = tok -> str;
 		lvar -> len = tok -> len;
-		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		int size = type_size(ty);
+		lvar -> offset = (locals ? locals -> offset : 0) + size;
 		lvar -> ty = ty;
 		locals = lvar;
 
@@ -690,18 +737,17 @@ Node *unary() {
 }
 
 Node *primary() {
+	Node *node;
 	if (consume("(")) {
-		Node *node = expr();
+		node = expr();
 		expect(")");
-		return node;
 	}
-
-    if (token -> kind == TK_IDENT) {
+	else if (token -> kind == TK_IDENT) {
 		Token *tok = token; // トークンを覚えておく
 		token = token -> next; // トークンを1個消費
 
 		if (consume("(")) {
-			Node *node = new_node_call(tok);
+			node = new_node_call(tok);
 			//空っぽの引数リスト
 			if (consume(")")) {
 				return node;
@@ -728,9 +774,8 @@ Node *primary() {
 		if (lvar) {
 			// いた場合
 			// 名簿に書いてある古い住所でノードの制作
-			Node *node = new_node_lvar(lvar -> offset);
+			node = new_node_lvar(lvar -> offset);
 			node -> ty = lvar -> ty;
-			return node;
 		} else {
 			// いなかった場合
 			// 新しい名簿の箱を作る
@@ -743,14 +788,31 @@ Node *primary() {
 			// 名簿が空なら0
 			// 先輩がいたらその人の住所+8
 			lvar -> offset = (locals ? locals -> offset : 0) + 8;
+			lvar -> ty = new_type_int();
 
 			locals = lvar; // 名簿の先頭を新人に更新
-			Node *node = new_node_lvar(lvar -> offset);
+			node = new_node_lvar(lvar -> offset);
 			node -> ty = lvar -> ty;
-			return node;
 		}
-    }
+    } else {
+		node = new_node_num(expect_number());
+	}
 
-	return new_node_num(expect_number());
+	while(consume("[")) {
+		Node *index = expr();
+		expect("]");
+		node = new_node_add(node, index);
+		node = new_node(ND_DEREF, node, NULL);
+
+		if (node -> lhs -> ty -> ptr_to) {
+			node -> ty = node -> lhs -> ty -> ptr_to;
+		} else {
+			node -> ty = new_type_int();
+		}
+				
+	}
+	return node;
 }
+
+	
 

@@ -25,9 +25,11 @@ void gen(Node *node) {
 		return;
     case ND_LVAR:
         gen_lval(node);
-        printf("    pop rax\n");
-        printf("    mov rax, [rax]\n");
-        printf("    push rax\n");
+        if (node -> ty -> kind != TY_ARRAY) {
+            printf("    pop rax\n");
+            printf("    mov rax, [rax]\n");
+            printf("    push rax\n");
+        }
         return;
     case ND_ASSIGN:
         gen_lval(node -> lhs);
@@ -72,6 +74,7 @@ void gen(Node *node) {
         }
         
         printf(".L.end.%d:\n", c);
+        printf("    push 0\n");
         return;
     }
     case ND_WHILE: {
@@ -96,6 +99,7 @@ void gen(Node *node) {
         printf("    jmp .L.begin.%d\n", c);
 
         printf(".L.end.%d:\n", c);
+        printf("    push 0\n");
         return;
     }
     case ND_BLOCK: {

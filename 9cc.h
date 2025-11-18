@@ -40,11 +40,13 @@ typedef struct Type Type;
 typedef enum {
 	TY_INT,
 	TY_PTR,
+	TY_ARRAY,
 } TypeKind;
 
 struct Type {
 	TypeKind kind;
 	Type *ptr_to;
+	size_t array_size;
 };
 
 typedef enum {
