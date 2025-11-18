@@ -27,4 +27,8 @@ assert 3 "foo() { return 3; } main() { return foo(); }"
 assert 42 "foo() { return 42; } main() { return foo(1, 2, 3); }"
 assert 10 "foo() { a=10; return a; } main() { a=5; return foo(); }"
 
+assert 3 "main() { x=3; y=&x; return *y; }"
+assert 3 "main() { x=3; y=&x; z=&y; return **z; }"
+assert 5 "main() { x=3; y=&x; *y=5; return x; }"
+
 echo OK

@@ -3,12 +3,18 @@
 int label_count = 0;
 
 void gen_lval(Node *node) {
-    if (node -> kind != ND_LVAR)
-        error("代入の左辺値が変数ではありません");
-    printf("    mov rax, rbp\n");
-    printf("    sub rax, %d\n", node -> offset);
-    printf("    push rax\n");
-
+    if (node -> kind == ND_LVAR) {
+        printf("    mov rax, rbp\n");
+        printf("    sub rax, %d\n", node -> offset);
+        printf("    push rax\n");
+        return;
+    }
+    
+    if (node -> kind == ND_DEREF) {
+        gen(node -> lhs);
+        return;
+    }
+    error("代入の左辺値が変数ではありません");
 }
 
 void gen(Node *node) {
@@ -130,6 +136,26 @@ void gen(Node *node) {
         printf("    push rax\n");
         return;
     }
+
+    case ND_ADDR:
+        // アドレスを取りたい変数を gen_lval に渡すと
+        // その「アドレス」をスタックに積んでくれる
+        gen_lval(node -> lhs);
+        return;
+
+    case ND_DEREF:
+        // p(アドレス)を計算してスタックに積む
+        gen(node -> lhs);
+
+        // スタックからアドレスを取り出す
+        printf("    pop rax\n");
+
+        // そのアドレスにある値を読みだして、raxに入れる
+        printf("    mov rax, [rax]\n");
+
+        // 値をスタックに積む
+        printf("    push rax\n");
+        return;
     case '+':
     case '-':
     case '*':

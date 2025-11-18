@@ -142,6 +142,12 @@ Token *tokenize(char *p) {
 			continue;
 		}
 
+		if (*p == '&') {
+			cur = new_token(TK_RESERVED, cur, p, 1);
+			p++;
+			continue;
+		}
+
 		if (*p == '/') {
 			cur = new_token(TK_RESERVED, cur, p, 1);
 			p++;
@@ -499,6 +505,11 @@ Node *unary() {
 		return primary();
 	if (consume("-")) 
 		return new_node('-', new_node_num(0), primary());
+	if (consume("&"))
+		return new_node(ND_ADDR, unary(), NULL);
+	if (consume("*"))
+		return new_node(ND_DEREF, unary(), NULL);
+
 	return primary();
 }
 
