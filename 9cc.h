@@ -35,7 +35,17 @@ extern Token *token;
 // 入力データ
 extern char *user_input;
 
+typedef struct Type Type;
 
+typedef enum {
+	TY_INT,
+	TY_PTR,
+} TypeKind;
+
+struct Type {
+	TypeKind kind;
+	Type *ptr_to;
+};
 
 typedef enum {
 	ND_EQ, // ==
@@ -69,6 +79,7 @@ struct Node {
 	char *name;
 	int name_len;
 	Node *args;
+	Type *ty;
 };
 
 typedef struct LVar LVar;
@@ -77,6 +88,7 @@ struct LVar{
 	char *name;
 	int len;
 	int offset;
+	Type *ty;
 };
 extern LVar *locals;
 

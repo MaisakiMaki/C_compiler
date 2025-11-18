@@ -236,9 +236,25 @@ Token *tokenize(char *p) {
 	return head.next;
 }
 
+Type *new_type_int() {
+	Type *ty = calloc(1, sizeof(Type));
+	ty -> kind = TY_INT;
+	return ty;
+}
+
+Type *new_type_ptr(Type *base) {
+	Type *ty = calloc(1, sizeof(Type));
+	ty -> kind = TY_PTR;
+	return ty;
+}
+
+Type *parse_base_type() {
+	if (consume("int"))
+		return new_type_int();
+	return NULL;
+}
+
 // 抽象構文木のノードの種類
-
-
 Node *new_node(int kind, Node *lhs, Node *rhs) {
 	Node *node = calloc(1, sizeof(Node));
 	node -> kind = kind;
@@ -290,8 +306,11 @@ Node *new_node_call(Token *tok) {
 Function *function() {
 	// 新しい関数に入ったので、ローカル変数をリセットする
 	locals = NULL;
-	consume("int");
-	while(consume("*"));
+	Type *ty = parse_base_type();
+	if (!ty) error_at(token -> str, "型ではありません");
+	while(consume("*")) {
+		ty = new_type_ptr(ty);
+	}
 
 	Token *tok = expect_ident(); //関数名を期待
 
@@ -306,8 +325,11 @@ Function *function() {
 		expect("{");
 	} else {
 		params++;
-		consume("int");
-		while(consume("*"));
+		ty = parse_base_type();
+		if (!ty) error_at(token -> str, "型ではありません");
+		while(consume("*")) {
+			ty = new_type_ptr(ty);
+		}
 		Token *tok = expect_ident();
 
 		LVar *lvar = calloc(1, sizeof(LVar));
@@ -315,12 +337,16 @@ Function *function() {
 		lvar -> name = tok -> str;
 		lvar -> len = tok -> len;
 		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		lvar -> ty = ty;
 		locals = lvar;
 
 		while (consume(",")) {
 			params++;
-			consume("int");
-			while(consume("*"));
+			ty = parse_base_type();
+			if (!ty) error_at(token -> str, "型ではありません");
+			while(consume("*")) {
+				ty = new_type_ptr(ty);
+			}
 
 			tok = expect_ident();
 
@@ -329,6 +355,7 @@ Function *function() {
 			lvar -> name = tok -> str;
 			lvar -> len = tok -> len;
 			lvar -> offset = (locals ? locals -> offset : 0) + 8;
+			lvar -> ty = ty;
 			locals = lvar;
 		}
 		expect(")");
@@ -372,8 +399,12 @@ Function *program(void) {
 }
 
 Node *stmt() {
-	if (consume("int")) {
-		while(consume("*"));
+	Type *ty = parse_base_type();
+	if (ty) {
+
+		while(consume("*")) {
+			ty = new_type_ptr(ty);
+		}
 
 		Token *tok = expect_ident();
 
@@ -382,6 +413,7 @@ Node *stmt() {
 		lvar -> name = tok -> str;
 		lvar -> len = tok -> len;
 		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		lvar -> ty = ty;
 		locals = lvar;
 
 		if (consume("=")) {
