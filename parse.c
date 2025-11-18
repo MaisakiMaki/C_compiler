@@ -212,6 +212,8 @@ Token *tokenize(char *p) {
 				cur = new_token(TK_WHILE, cur, start, 5);
 			} else if (len == 3 && memcmp(start, "for", 3) == 0) {
 				cur = new_token(TK_FOR, cur, start, 3);
+			} else if (len == 3 && memcmp(start, "int", 3) == 0) {
+				cur = new_token(TK_RESERVED, cur, start, 3);
 			} else {
 				cur = new_token(TK_IDENT, cur, start, len);
 			}
@@ -288,6 +290,8 @@ Node *new_node_call(Token *tok) {
 Function *function() {
 	// 新しい関数に入ったので、ローカル変数をリセットする
 	locals = NULL;
+	consume("int");
+	while(consume("*"));
 
 	Token *tok = expect_ident(); //関数名を期待
 
@@ -297,8 +301,41 @@ Function *function() {
 	func -> name_len = tok -> len;
 
 	expect("(");
-	expect(")");
-	expect("{");
+	int params = 0;
+	if (consume(")")) {
+		expect("{");
+	} else {
+		params++;
+		consume("int");
+		while(consume("*"));
+		Token *tok = expect_ident();
+
+		LVar *lvar = calloc(1, sizeof(LVar));
+		lvar -> next = locals;
+		lvar -> name = tok -> str;
+		lvar -> len = tok -> len;
+		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		locals = lvar;
+
+		while (consume(",")) {
+			params++;
+			consume("int");
+			while(consume("*"));
+
+			tok = expect_ident();
+
+			lvar = calloc(1, sizeof(LVar));
+			lvar -> next = locals;
+			lvar -> name = tok -> str;
+			lvar -> len = tok -> len;
+			lvar -> offset = (locals ? locals -> offset : 0) + 8;
+			locals = lvar;
+		}
+		expect(")");
+		expect("{");
+	}
+	
+	
 
 	Node head = {};
 	Node *cur = &head;
@@ -309,12 +346,14 @@ Function *function() {
 	
 	func -> node = head.next; // 文のリストを関数ノードにつなぐ
 	func -> locals = locals;
+
+	func -> params_len = params;
 	
 	int offset = 0;
     if (locals) {
         offset = locals->offset; //
     }
-    func->stack_size = offset; // Function構造体に保存
+    func->stack_size = (offset + 15) / 16 * 16; // Function構造体に保存
 
 	return func;
 }
@@ -333,6 +372,28 @@ Function *program(void) {
 }
 
 Node *stmt() {
+	if (consume("int")) {
+		while(consume("*"));
+
+		Token *tok = expect_ident();
+
+		LVar *lvar = calloc(1, sizeof(LVar));
+		lvar -> next = locals;
+		lvar -> name = tok -> str;
+		lvar -> len = tok -> len;
+		lvar -> offset = (locals ? locals -> offset : 0) + 8;
+		locals = lvar;
+
+		if (consume("=")) {
+			Node *lhs = new_node_lvar(lvar -> offset);
+			Node *rhs = expr();
+			expect(";");
+			return new_node(ND_ASSIGN, lhs, rhs);
+		}
+		expect(";");
+
+		return new_node(ND_BLOCK, NULL, NULL);
+	}
 	if (token -> kind == TK_RETURN) {
 		token = token -> next; // TK_RETURNを消費
 

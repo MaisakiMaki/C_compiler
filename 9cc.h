@@ -88,6 +88,7 @@ struct Function {
 	int name_len; // 関数名の長さ
 	Node *node; // 関数本体の先頭
 	LVar *locals; // この関数のローカル変数リスト
+	int params_len;
 	int stack_size; // この関数が必要とするスタックサイズ
 };
 

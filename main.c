@@ -30,6 +30,13 @@ int main(int argc, char **argv) {
 		//必要なスタックサイズをfuncから持ってくる
 		printf("	sub rsp, %d\n", func -> stack_size);
 
+		char *arg_reg[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+		for (int i = 0; i < func -> params_len; i++) {
+
+			printf("	mov [rbp - %d], %s\n", (i + 1) * 8, arg_reg[i]);
+		}
+
 		//genが正しいローカル変数リストをつかえるように
 		//グローバル変数”local"を、今からgenする関数のものに入れ替える
 		locals = func -> locals;
